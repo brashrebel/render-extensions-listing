@@ -1,27 +1,25 @@
 <?php
 
 /*
-Plugin Name: WP Plugins A To Z
+Plugin Name: Render Extensions Listing
 Plugin URI: http://realbigplugins.com
-Description: This plugin integrates the awesome reviews from the WP Plugins A to Z podcast with the Add New Plugin search.
+Description: This plugin integrates the listing of available Render addons from realbigplugins.com to a new tab on the Add New Plugins page.
 Version: 0.1
 Author: Kyle Maurer
-Author URI: http://kyleblog.net
+Author URI: http://realbigplugins.com
 License: GPLv2 or later
-Text Domain: wppatoz
+Text Domain: renderx
 */
 
-class WP_Plugins_AtoZ {
+class Render_Extension_List {
 
 	/**
 	 *
 	 */
 	public function __construct() {
 		add_filter( 'install_plugins_tabs', array( $this, 'add_tab' ) );
-		//add_action( 'install_plugins_wppatoz', array( $this, 'get_stuff' ) );
-		add_action( 'install_plugins_wppatoz', array( $this, 'contents' ) );
-		add_action( 'install_plugins_wppatoz', 'display_plugins_table' );
-		//add_filter( 'plugins_api_result', array( $this, 'add_results' ) );
+		add_action( 'install_plugins_renderx', array( $this, 'contents' ) );
+		add_action( 'install_plugins_renderx', 'display_plugins_table' );
 	}
 
 	/**
@@ -30,7 +28,7 @@ class WP_Plugins_AtoZ {
 	 * @return mixed
 	 */
 	public function add_tab( $tabs ) {
-		$tabs['wppatoz'] = _x( 'WP Plugins A to Z', 'Plugin Installer' );
+		$tabs['renderx'] = _x( 'Render', 'Plugin Installer' );
 
 		return $tabs;
 	}
@@ -40,7 +38,7 @@ class WP_Plugins_AtoZ {
 	 */
 	public function get_stuff() {
 
-		$url = 'http://rbmin.staging.wpengine.com/wp-json/posts?type[]=download';
+		$url = 'http://realbigplugins.com/wp-json/posts?type[]=download';
 		//GET the remote site
 		$response = wp_remote_get( $url );
 
@@ -136,4 +134,4 @@ class WP_Plugins_AtoZ {
 	}
 }
 
-new WP_Plugins_AtoZ();
+new Render_Extension_List();
