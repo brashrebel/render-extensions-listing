@@ -18,8 +18,26 @@ class Render_Extension_List {
 	 */
 	public function __construct() {
 		add_filter( 'install_plugins_tabs', array( $this, 'add_tab' ) );
-		add_action( 'install_plugins_renderx', array( $this, 'contents' ) );
-		add_action( 'install_plugins_renderx', 'display_plugins_table' );
+		add_action( 'install_plugins_render', array( $this, 'contents' ) );
+		add_action( 'install_plugins_render', 'display_plugins_table' );
+
+		add_action( 'admin_notices', function () {
+
+//			$args = array( 'user' => 'BrashRebel' );
+//			$api  = plugins_api( 'query_plugins', $args );
+//			// Testing the output from our .org call
+//			echo '<h1>External</h1><pre>';
+//			var_dump( $api->plugins );
+//			echo '</pre>';
+			// Data from RBP
+			echo '<h1>Before</h1><pre>';
+			var_dump( $this->get_stuff() );
+			echo '</pre>';
+			// Data converted
+			echo '<h1>After</h1><pre>';
+			var_dump( $this->setup_results() );
+			echo '</pre>';
+		} );
 	}
 
 	/**
@@ -28,7 +46,7 @@ class Render_Extension_List {
 	 * @return mixed
 	 */
 	public function add_tab( $tabs ) {
-		$tabs['renderx'] = _x( 'Render', 'Plugin Installer' );
+		$tabs['render'] = _x( 'Render', 'Plugin Installer' );
 
 		return $tabs;
 	}
@@ -53,9 +71,6 @@ class Render_Extension_List {
 		//return if not an error
 		if ( ! is_wp_error( $data ) ) {
 			$data = json_decode( $data );
-//			echo 'DEBUGGING<pre>';
-//			print_r( $data );
-//			echo '</pre>';
 
 			//decode and return
 			return $data;
@@ -72,9 +87,9 @@ class Render_Extension_List {
 			$object->name              = $plugin->title;
 			$object->slug              = $plugin->slug;
 			$object->version           = '1.0';
-			$object->author            = 'Here we go';
-			$object->author_profile    = 'Here we go';
-			$object->contributors      = array( 'Kyle' => 'http://kyleblog.net' );
+			$object->author            = $plugin->author->name;
+			$object->author_profile    = $plugin->author->URL;
+			$object->contributors      = array( $plugin->author->name => $plugin->author->URL );
 			$object->requires          = '1.0';
 			$object->tested            = '4.0';
 			$object->compatibility     = array( '4.0' => array( '1.0' => array( '100' ) ) );
@@ -87,11 +102,11 @@ class Render_Extension_List {
 				'2' => 8,
 				'1' => 1
 			);
-			$object->description       = 'Here we go';
-			$object->short_description = 'Here we go';
-			$object->icons             = array( 'default' => '#' );
+			$object->description       = $plugin->excerpt;
+			$object->short_description = substr( $plugin->excerpt, 0, strpos( $plugin->excerpt, ' ', 80 ) ) . '...';
+			$object->icons             = array( 'default' => $plugin->featured_image->source );
 			$object->downloaded        = 1100;
-			$object->last_updated      = '1 month ago';
+			$object->last_updated      = $plugin->modified;
 
 			$objects[] = $object;
 		}
@@ -105,33 +120,24 @@ class Render_Extension_List {
 	public function contents() {
 		global $wp_list_table;
 
-//		echo 'TESTING<pre>';
-//		var_dump( $this->get_stuff() );
-//		echo '</pre>';
 		// Testing the contents of our manually built object
-		echo 'TESTING<pre>';
-		var_dump( $this->setup_results() );
-		echo '</pre>';
+
 
 		// Used for customizing a .org call
-		$args = array( 'user' => 'BrashRebel' );
-		$api  = plugins_api( 'query_plugins', $args );
+//		$args = array( 'user' => 'BrashRebel' );
+//		$api  = plugins_api( 'query_plugins', $args );
 
 		// Give the table list the source array of objects
 		$wp_list_table->items = $this->setup_results();//$api->plugins;
 
-		// Testing the output from our .org call
-		echo 'DEBUGGING<pre>';
-		var_dump( $api->plugins );
-		echo '</pre>';
 
-//		$wp_list_table->set_pagination_args(
-//			array(
-//				'total_items' => $api->info['results'],
-//				'per_page'    => 5,
-//			)
-//		);
+		$wp_list_table->set_pagination_args(
+			array(
+				'total_items' => $api->info['results'],
+				'per_page'    => 5,
+			)
+		);
 	}
 }
 
-new Render_Extension_List();
+$render = new Render_Extension_List();
