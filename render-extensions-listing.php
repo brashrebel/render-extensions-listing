@@ -13,45 +13,33 @@ Text Domain: renderx
 
 class Render_Extension_List {
 
+	public $tab = 'render';
+
 	/**
-	 *
+	 * Load all the things
 	 */
 	public function __construct() {
 		add_filter( 'install_plugins_tabs', array( $this, 'add_tab' ) );
 		add_action( 'install_plugins_render', array( $this, 'contents' ) );
 		add_action( 'install_plugins_render', 'display_plugins_table' );
-
-		add_action( 'admin_notices', function () {
-
-//			$args = array( 'user' => 'BrashRebel' );
-//			$api  = plugins_api( 'query_plugins', $args );
-//			// Testing the output from our .org call
-//			echo '<h1>External</h1><pre>';
-//			var_dump( $api->plugins );
-//			echo '</pre>';
-			// Data from RBP
-			echo '<h1>Before</h1><pre>';
-			var_dump( $this->get_stuff() );
-			echo '</pre>';
-			// Data converted
-			echo '<h1>After</h1><pre>';
-			var_dump( $this->setup_results() );
-			echo '</pre>';
-		} );
 	}
 
 	/**
+	 * Add a new tab to the plugin-install.php page
+	 *
 	 * @param $tabs
 	 *
 	 * @return mixed
 	 */
 	public function add_tab( $tabs ) {
-		$tabs['render'] = _x( 'Render', 'Plugin Installer' );
+		$tabs[ $this->tab ] = _x( 'Render', 'Plugin Installer' );
 
 		return $tabs;
 	}
 
 	/**
+	 * Make a remote request to realbigplugins.com
+	 *
 	 * @return mixed|string
 	 */
 	public function get_stuff() {
@@ -78,23 +66,27 @@ class Render_Extension_List {
 		}
 	}
 
+	/**
+	 * Convert incoming data from realbigplugins.com to array of objects
+	 *
+	 * @return array
+	 */
 	public function setup_results() {
-		// Building an object which matches what the plugins list table expects
 		$objects = array();
 
 		foreach ( $this->get_stuff() as $plugin ) {
 			$object                    = new stdClass();
 			$object->name              = $plugin->title;
 			$object->slug              = $plugin->slug;
-			$object->version           = '1.0';
+			$object->version           = $plugin->more->version;
 			$object->author            = $plugin->author->name;
 			$object->author_profile    = $plugin->author->URL;
 			$object->contributors      = array( $plugin->author->name => $plugin->author->URL );
-			$object->requires          = '1.0';
-			$object->tested            = '4.0';
+			$object->requires          = null;
+			$object->tested            = null;
 			$object->compatibility     = array( '4.0' => array( '1.0' => array( '100' ) ) );
-			$object->rating            = 99.5;
-			$object->num_ratings       = 234;
+			$object->rating            = null;
+			$object->num_ratings       = null;
 			$object->ratings           = array(
 				'5' => 25,
 				'4' => 2,
@@ -105,13 +97,49 @@ class Render_Extension_List {
 			$object->description       = $plugin->excerpt;
 			$object->short_description = substr( $plugin->excerpt, 0, strpos( $plugin->excerpt, ' ', 80 ) ) . '...';
 			$object->icons             = array( 'default' => $plugin->featured_image->source );
-			$object->downloaded        = 1100;
+			$object->downloaded        = $plugin->more->sales;
 			$object->last_updated      = $plugin->modified;
 
 			$objects[] = $object;
+
 		}
 
 		return $objects;
+	}
+
+	public function change_action_links( $action_links, $plugin ) {
+		$action_links = array();
+
+		if ( current_user_can( 'install_plugins' ) || current_user_can( 'update_plugins' ) ) {
+			$status   = install_plugin_install_status( $plugin );
+			$tracking = '?utm_source=Add-New-Plugin&utm_medium=Action-Link&utm_content=' . $_SERVER['HTTP_HOST'] . '&utm_campaign=Add-new-plugins-action-links';
+
+			switch ( $status['status'] ) {
+				case 'install':
+					if ( $status['url'] ) {
+						$action_links[] = '<a class="install-now button" href="http://realbigplugins.com/plugins/' . $plugin['slug'] . '/' . $tracking . '" aria-label="' . esc_attr( sprintf( __( 'Download %s now' ), $name ) ) . '">' . __( 'Download Now' ) . '</a>';
+					} else {
+						$action_links[] = '<span class="button button-disabled" title="' . esc_attr__( 'This plugin is already installed and is up to date' ) . ' ">' . _x( 'Installed', 'plugin' ) . '</span>';
+					}
+
+					break;
+				case 'update_available':
+					if ( $status['url'] ) {
+						$action_links[] = '<a class="button" href="' . $status['url'] . '" aria-label="' . esc_attr( sprintf( __( 'Update %s now' ), $name ) ) . '">' . __( 'Update Now' ) . '</a>';
+					}
+
+					break;
+				case 'latest_installed':
+				case 'newer_installed':
+					$action_links[] = '<span class="button button-disabled" title="' . esc_attr__( 'This plugin is already installed and is up to date' ) . ' ">' . _x( 'Installed', 'plugin' ) . '</span>';
+					break;
+			}
+		}
+		$details_link = 'http://realbigplugins.com/plugins/' . $plugin['slug'] . '/' . $tracking . '&amp;TB_iframe=true&amp;width=600&amp;height=550';
+
+		$action_links[] = '<a href="' . esc_url( $details_link ) . '" class="thickbox" aria-label="' . esc_attr( sprintf( __( 'More information about %s' ), $name ) ) . '" data-title="' . esc_attr( $name ) . '">' . __( 'More Details' ) . '</a>';
+
+		return $action_links;
 	}
 
 	/**
@@ -120,23 +148,9 @@ class Render_Extension_List {
 	public function contents() {
 		global $wp_list_table;
 
-		// Testing the contents of our manually built object
-
-
-		// Used for customizing a .org call
-//		$args = array( 'user' => 'BrashRebel' );
-//		$api  = plugins_api( 'query_plugins', $args );
-
 		// Give the table list the source array of objects
-		$wp_list_table->items = $this->setup_results();//$api->plugins;
-
-
-		$wp_list_table->set_pagination_args(
-			array(
-				'total_items' => $api->info['results'],
-				'per_page'    => 5,
-			)
-		);
+		$wp_list_table->items = $this->setup_results();
+		add_filter( 'plugin_install_action_links', array( $this, 'change_action_links' ), 99, 2 );
 	}
 }
 
